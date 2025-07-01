@@ -1,0 +1,2 @@
+# pal
+Rag chatbot implementation
