@@ -1,7 +1,9 @@
 import os
 import bs4
 from dotenv import load_dotenv
-from typing_extensions import List, TypedDict
+
+from typing import Literal
+from typing_extensions import List, TypedDict, Annotated
 
 # Langchain imports
 from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
@@ -54,23 +56,51 @@ docs = loader.load()
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 all_splits = text_splitter.split_documents(docs)
 
+# Add metadata to each document based on its position in the list
+total_documents = len(all_splits)
+third = total_documents // 3
+
+for i, document in enumerate(all_splits):
+    if i < third:
+        document.metadata["section"] = "beginning"
+    elif i < 2 * third:
+        document.metadata["section"] = "middle"
+    else:
+        document.metadata["section"] = "end"
+
+# print(all_splits[0].metadata)
+
 # Index chunks
 _ = vector_store.add_documents(documents=all_splits)
 
 # ----------------------------------------------------------------------------# #                          Define state for the application                    # #-----------------------------------------------------------------------------#
 prompt = hub.pull("rlm/rag-prompt")
 
+class Search(TypedDict):
+    """Search query."""
+
+    query: Annotated[str, ..., "Search query to run."]
+    section: Annotated[
+        Literal["beginning", "middle", "end"],
+        ...,
+        "Section to query.",
+    ]
 
 # Define state for application
 class State(TypedDict):
     question: str
+    query : Search
     context: List[Document]
     answer: str
 
 
 # Define application steps
 def retrieve(state: State):
-    retrieved_docs = vector_store.similarity_search(state["question"])
+    query = state["query"]
+    retrieved_docs = vector_store.similarity_search(
+        query["query"],
+        filter=lambda doc: doc.metadata.get("section") == query["section"],
+    )
     return {"context": retrieved_docs}
 
 
@@ -82,25 +112,10 @@ def generate(state: State):
 
 
 # ----------------------------------------------------------------------------# #                          Build and compile the state graph                  # #-----------------------------------------------------------------------------#
-graph_builder = StateGraph(State).add_sequence([retrieve, generate])
-graph_builder.add_edge(START, "retrieve")
+graph_builder = StateGraph(State).add_sequence([analyze_query, retrieve, generate])
+graph_builder.add_edge(START, "analyze_query")
 graph = graph_builder.compile()
 
-response = graph.invoke({"question": "What is Task Decomposition?"})
-print(response["answer"])
-# ----------------------------------------------------------------------------#          #  Uncomment the following lines to test the chat model with a sample message # #-----------------------------------------------------------------------------#
-
-# messages = [
-#     ("system", "You are a helpful translator. Translate the user sentence to French."),
-#     ("human", "I love programming."),
-# ]
-
-# print("=== Invoke Response ===")
-# response = chat.invoke(messages)
-# print(f"Content: {response.content}")
-# print()
-
-# print("=== Streaming Response ===")
-# for chunk in chat.stream(messages):
-#     print(chunk.content, end="", flush=True)
-# print()  # Add a newline at the end
+for chunk in graph.stream({"question": "What is Task Decomposition?"}): # Stream the response
+    print(chunk["answer"], end="", flush=True)
+print()  # Add a newline at the end
