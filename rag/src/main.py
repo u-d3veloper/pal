@@ -33,9 +33,7 @@ llm = HuggingFaceEndpoint(
     repetition_penalty=1.03,
     huggingfacehub_api_token=hf_token,
 )
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-)
+embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-large-en-v1.5")
 
 # Configure ChatHuggingFace with proper parameters for streaming
 chat = ChatHuggingFace(llm=llm, verbose=True)
@@ -71,6 +69,15 @@ for i, document in enumerate(all_splits):
 
 # print(all_splits[0].metadata)
 
+# Clear existing vector store before adding new documents
+try:
+    vector_store.delete_collection()
+except:
+    pass  # Collection might not exist yet
+
+# Create the collection
+vector_store.create_collection()
+
 # Index chunks
 _ = vector_store.add_documents(documents=all_splits)
 
@@ -80,7 +87,6 @@ prompt = hub.pull("rlm/rag-prompt")
 
 class Search(TypedDict):
     """Search query."""
-
     query: Annotated[str, ..., "Search query to run."]
     section: Annotated[
         Literal["beginning", "middle", "end"],
@@ -108,7 +114,7 @@ def retrieve(state: State):
     query = state["query"]
     retrieved_docs = vector_store.similarity_search(
         query["query"],
-        filter=lambda doc: doc.metadata.get("section") == query["section"],
+        filter={"section": query["section"]},
     )
     return {"context": retrieved_docs}
 
@@ -125,8 +131,8 @@ graph_builder = StateGraph(State).add_sequence([analyze_query, retrieve, generat
 graph_builder.add_edge(START, "analyze_query")
 graph = graph_builder.compile()
 
-for step in graph.stream(
-    {"question": "What are the key components of an AI agent?"},
-    stream_mode="updates",
+
+for message, metadata in graph.stream(
+    {"question": "What is the purpose of the context document?"}, stream_mode="messages"
 ):
-    print(f"{step}\n\n-----------\n")
+    print(message.content, end="")
