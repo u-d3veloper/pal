@@ -20,18 +20,24 @@ load_dotenv()
 
 # ----------------------------------------------------------------------------# #             Models and storage configuration for the RAG system             # #-----------------------------------------------------------------------------#
 
+# Validate Hugging Face token
+hf_token = os.getenv("HUGGINGFACE_TOKEN")
+if not hf_token:
+    raise ValueError("HUGGINGFACE_TOKEN environment variable is required")
+
 llm = HuggingFaceEndpoint(
     repo_id="meta-llama/Llama-3.1-8B-Instruct",
     task="text-generation",
     max_new_tokens=512,
     do_sample=False,
     repetition_penalty=1.03,
-    huggingfacehub_api_token=os.getenv("HUGGINGFACE_TOKEN"),
+    huggingfacehub_api_token=hf_token,
 )
 embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 )
 
+# Configure ChatHuggingFace with proper parameters for streaming
 chat = ChatHuggingFace(llm=llm, verbose=True)
 
 vector_store = PGVector(
@@ -45,11 +51,6 @@ vector_store = PGVector(
 # Load and chunk contents of the blog
 loader = WebBaseLoader(
     web_paths=("https://lilianweng.github.io/posts/2023-06-23-agent/",),
-    bs_kwargs=dict(
-        parse_only=bs4.SoupStrainer(
-            class_=("post-content", "post-title", "post-header")
-        )
-    ),
 )
 docs = loader.load()
 
@@ -76,6 +77,7 @@ _ = vector_store.add_documents(documents=all_splits)
 # ----------------------------------------------------------------------------# #                          Define state for the application                    # #-----------------------------------------------------------------------------#
 prompt = hub.pull("rlm/rag-prompt")
 
+
 class Search(TypedDict):
     """Search query."""
 
@@ -86,15 +88,22 @@ class Search(TypedDict):
         "Section to query.",
     ]
 
+
 # Define state for application
 class State(TypedDict):
     question: str
-    query : Search
+    query: Search
     context: List[Document]
     answer: str
 
 
 # Define application steps
+def analyze_query(state: State):
+    structured_llm = chat.with_structured_output(Search)
+    query = structured_llm.invoke(state["question"])
+    return {"query": query}
+
+
 def retrieve(state: State):
     query = state["query"]
     retrieved_docs = vector_store.similarity_search(
@@ -107,7 +116,7 @@ def retrieve(state: State):
 def generate(state: State):
     docs_content = "\n\n".join(doc.page_content for doc in state["context"])
     messages = prompt.invoke({"question": state["question"], "context": docs_content})
-    response = chat.invoke(messages)  # Use chat instead of llm
+    response = chat.invoke(messages)
     return {"answer": response.content}
 
 
@@ -116,6 +125,8 @@ graph_builder = StateGraph(State).add_sequence([analyze_query, retrieve, generat
 graph_builder.add_edge(START, "analyze_query")
 graph = graph_builder.compile()
 
-for chunk in graph.stream({"question": "What is Task Decomposition?"}): # Stream the response
-    print(chunk["answer"], end="", flush=True)
-print()  # Add a newline at the end
+for step in graph.stream(
+    {"question": "What are the key components of an AI agent?"},
+    stream_mode="updates",
+):
+    print(f"{step}\n\n-----------\n")
