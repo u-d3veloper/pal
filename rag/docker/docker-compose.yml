@@ -2,7 +2,7 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     env_file:
-      - fileName: .env
+      - ../.env
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
