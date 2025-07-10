@@ -1,7 +1,16 @@
+"use client"
+
 import React from 'react'
 import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
 
 export default function Welcome() {
+    const router = useRouter()
+
+    const handleRedirect = () => {
+        router.push('/chat')
+    }
+
     return (
         <main className="flex min-h-screen w-full flex-col justify-center items-center ">
             <div className="w-200 p-8">
@@ -14,7 +23,7 @@ export default function Welcome() {
                     It is built with Next.js, TypeScript, and Python, leveraging the power of vector databases for efficient retrieval. You can find more information on the
                     <a href="https://github.com/u-d3veloper/pal" className="text-blue-500"> github</a> repository.
                 </p>
-                <Button variant="default" className="">
+                <Button variant="default" className="" onClick={handleRedirect}>
                     Get started 👉🏼
                 </Button>
             </div>
