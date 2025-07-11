@@ -1,10 +1,5 @@
-
-from fastapi.responses import StreamingResponse
-from typing import Union
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .models.QueryModels import Query
-from .lib.query import call_llm, stream_content
 
 app = FastAPI()
 
@@ -17,11 +12,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.post("/query/stream")
-async def stream_query(query: Query):
-    return StreamingResponse(stream_content(query), media_type="text/plain")
+# Import routes
 
-@app.post("/query")
-async def query_items(query: Query):
-    response = await call_llm(query)
-    return {"response": response, "query": query.content}
+from .routes.chat import create_chat_routes
+create_chat_routes(app)
