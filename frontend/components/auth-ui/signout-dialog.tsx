@@ -29,9 +29,9 @@ export default function SignOutDialog({
                             You will be redirected to the login page and will need to sign in again to access your account.
                         </span>
                         <br /><br />
-                        <p className='text-md text-black'>
+                        <span className='text-md text-black block'>
                             Hope to see you back 👋
-                        </p>
+                        </span>
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
