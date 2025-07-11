@@ -1,22 +1,6 @@
 const chatApi = {
-    query: async (content: string) => {
-        const response = await fetch("/api/query", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ content }),
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return response.json();
-    },
-
     stream: async (content: string, onChunk?: (chunk: string) => void) => {
-        const response = await fetch("/api/query/stream", {
+        const response = await fetch("/api/chat", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
