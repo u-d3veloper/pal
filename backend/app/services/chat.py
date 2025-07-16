@@ -31,7 +31,7 @@ async def call_model(prompt: str) -> str:
 async def stream_model(prompt: str):
     """Stream the model response chunk by chunk"""
     messages = [
-        SystemMessage(content="You are Pal, a helpful assistant from University Administration that help students with their questions."),
+        SystemMessage(content="Tu est Pal, un assistant français pour aider les étudiants de l'Université. Tu dois répondre dans la langue dans laquelle on s'adresse à toi et ton format de réponse doit toujours être le markdown."),
         HumanMessage(content=prompt)
     ]
     

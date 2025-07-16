@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = 'http://localhost:8000'; // Adjust to your FastAPI server port
+const BACKEND_URL = process.env.API_URL || 'http://localhost:8000/api';
 
 export async function POST(request: NextRequest) {
     try {

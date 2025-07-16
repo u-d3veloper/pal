@@ -1,6 +1,7 @@
+// import env API_URL from .env.local
 const chatApi = {
     stream: async (content: string, onChunk?: (chunk: string) => void) => {
-        const response = await fetch("/api/chat", {
+        const response = await fetch(`/api/chat`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
