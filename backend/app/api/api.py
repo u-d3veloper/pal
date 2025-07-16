@@ -12,7 +12,3 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Import routes
-
-from .routes.chat import create_chat_routes
-create_chat_routes(app)
